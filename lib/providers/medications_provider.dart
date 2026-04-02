@@ -3,7 +3,8 @@ import '../models/medication_schedule.dart';
 import '../services/api_service.dart';
 import 'health_data_provider.dart';
 
-class MedicationsNotifier extends StateNotifier<AsyncValue<List<MedicationSchedule>>> {
+class MedicationsNotifier
+    extends StateNotifier<AsyncValue<List<MedicationSchedule>>> {
   MedicationsNotifier(this._api) : super(const AsyncValue.loading()) {
     fetchMedications();
   }
@@ -16,7 +17,10 @@ class MedicationsNotifier extends StateNotifier<AsyncValue<List<MedicationSchedu
     if (result.isSuccess) {
       state = AsyncValue.data(result.data!);
     } else {
-      state = AsyncValue.error(result.error ?? 'Failed to fetch medications', StackTrace.current);
+      state = AsyncValue.error(
+        result.error ?? 'Failed to fetch medications',
+        StackTrace.current,
+      );
     }
   }
 
@@ -54,10 +58,23 @@ class MedicationsNotifier extends StateNotifier<AsyncValue<List<MedicationSchedu
 
   Future<bool> markTaken(String id) async {
     final result = await _api.markMedicationTaken(id);
-    return result.isSuccess;
+    if (result.isSuccess) {
+      final currentList = state.value ?? [];
+      state = AsyncValue.data(
+        currentList
+            .map((m) => m.id == id ? m.copyWith(isTaken: true) : m)
+            .toList(),
+      );
+      return true;
+    }
+    return false;
   }
 }
 
-final medicationsProvider = StateNotifierProvider<MedicationsNotifier, AsyncValue<List<MedicationSchedule>>>((ref) {
-  return MedicationsNotifier(ref.watch(apiServiceProvider));
-});
+final medicationsProvider =
+    StateNotifierProvider<
+      MedicationsNotifier,
+      AsyncValue<List<MedicationSchedule>>
+    >((ref) {
+      return MedicationsNotifier(ref.watch(apiServiceProvider));
+    });

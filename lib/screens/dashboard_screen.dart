@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_theme.dart';
-import '../providers/auth_provider.dart';
-import '../providers/health_data_provider.dart';
-import '../providers/emergency_provider.dart';
+import '../providers/index.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/system_pulse.dart';
 import '../widgets/emergency_overlay.dart';
@@ -27,21 +25,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   static const List<_TabConfig> _tabs = [
     _TabConfig(
-        label: 'Dashboard',
-        icon: Icons.monitor_heart_outlined,
-        activeIcon: Icons.monitor_heart),
+      label: 'Dashboard',
+      icon: Icons.monitor_heart_outlined,
+      activeIcon: Icons.monitor_heart,
+    ),
     _TabConfig(
-        label: 'Medications',
-        icon: Icons.medical_services_outlined,
-        activeIcon: Icons.medical_services),
+      label: 'Medications',
+      icon: Icons.medical_services_outlined,
+      activeIcon: Icons.medical_services,
+    ),
     _TabConfig(
-        label: 'Contacts',
-        icon: Icons.contacts_outlined,
-        activeIcon: Icons.contacts),
+      label: 'Contacts',
+      icon: Icons.contacts_outlined,
+      activeIcon: Icons.contacts,
+    ),
     _TabConfig(
-        label: 'Alerts',
-        icon: Icons.notifications_none_outlined,
-        activeIcon: Icons.notifications),
+      label: 'Alerts',
+      icon: Icons.notifications_none_outlined,
+      activeIcon: Icons.notifications,
+    ),
   ];
 
   @override
@@ -71,12 +73,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Scaffold(
           appBar: _buildAppBar(),
           body: _currentIndex == 0
-              ? const _DashboardTab()
+              ? const DashboardTab()
               : _currentIndex == 1
-                  ? const MedicationsTab()
-                  : _currentIndex == 2
-                      ? const ContactsTab()
-                      : const NotificationsTab(),
+              ? const MedicationsTab()
+              : _currentIndex == 2
+              ? const ContactsTab()
+              : const NotificationsTab(),
           bottomNavigationBar: _buildBottomNav(),
         ),
         const EmergencyOverlay(),
@@ -95,8 +97,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               shape: BoxShape.circle,
               gradient: AppColors.primaryGradient,
             ),
-            child:
-                const Icon(Icons.monitor_heart, size: 18, color: Colors.white),
+            child: const Icon(
+              Icons.monitor_heart,
+              size: 18,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(width: 10),
           const Text('Health Band'),
@@ -106,8 +111,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         IconButton(
           tooltip: 'Logout',
           onPressed: _logout,
-          icon:
-              const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
+          icon: const Icon(
+            Icons.logout_rounded,
+            color: AppColors.textSecondary,
+          ),
         ),
         const SizedBox(width: 4),
       ],
@@ -138,8 +145,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
 // ── Dashboard Tab (Live Data) ────────────────────────────────────────────────
 
-class _DashboardTab extends ConsumerWidget {
-  const _DashboardTab();
+class DashboardTab extends ConsumerWidget {
+  const DashboardTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -170,16 +177,21 @@ class _DashboardTab extends ConsumerWidget {
             children: [
               SystemPulse(isLive: state.isLive),
               TextButton.icon(
-                onPressed: () => ref.read(audioSettingsProvider.notifier).toggle(),
+                onPressed: () =>
+                    ref.read(audioSettingsProvider.notifier).toggle(),
                 icon: Icon(
-                  ref.watch(audioSettingsProvider) ? Icons.volume_up : Icons.volume_off,
-                  size: 18, 
+                  ref.watch(audioSettingsProvider)
+                      ? Icons.volume_up
+                      : Icons.volume_off,
+                  size: 18,
                   color: AppColors.textSecondary,
                 ),
                 label: Text(
                   ref.watch(audioSettingsProvider) ? 'Audio: ON' : 'Audio: OFF',
-                  style:
-                      const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 style: TextButton.styleFrom(
                   backgroundColor: AppColors.surfaceVariant,
@@ -187,13 +199,26 @@ class _DashboardTab extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                     side: const BorderSide(color: AppColors.divider),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
+
+          // Last updated timestamp
+          if (state.lastUpdated != null)
+            Text(
+              'Last updated: ${state.lastUpdated!.hour.toString().padLeft(2, '0')}:${state.lastUpdated!.minute.toString().padLeft(2, '0')}:${state.lastUpdated!.second.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          const SizedBox(height: 8),
 
           // Error banner
           if (state.errorMessage != null && !state.isLive) ...[
@@ -202,19 +227,25 @@ class _DashboardTab extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.error.withAlpha((255 * 0.1).round()),
                 border: Border.all(
-                    color: AppColors.error.withAlpha((255 * 0.3).round())),
+                  color: AppColors.error.withAlpha((255 * 0.3).round()),
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: AppColors.error, size: 20),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'API Error: ${state.errorMessage}. Falling back to mock data.',
-                      style:
-                          const TextStyle(color: AppColors.error, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -240,8 +271,9 @@ class _DashboardTab extends ConsumerWidget {
                 accentColor: AppColors.error,
                 sparklineData: state.heartRateHistory,
                 status: data.isNormal ? 'Normal' : 'High',
-                statusColor:
-                    data.isNormal ? AppColors.success : AppColors.error,
+                statusColor: data.isNormal
+                    ? AppColors.success
+                    : AppColors.error,
               ),
               MetricCard(
                 title: 'Blood Oxygen',
@@ -251,8 +283,9 @@ class _DashboardTab extends ConsumerWidget {
                 accentColor: AppColors.primary,
                 sparklineData: state.spo2History,
                 status: data.spo2 >= 95 ? 'Normal' : 'Low',
-                statusColor:
-                    data.spo2 >= 95 ? AppColors.success : AppColors.warning,
+                statusColor: data.spo2 >= 95
+                    ? AppColors.success
+                    : AppColors.warning,
                 minY: 90,
                 maxY: 100,
               ),
@@ -285,7 +318,9 @@ class _DashboardTab extends ConsumerWidget {
           else
             ...emergencyState.history.map((alert) {
               return _AlertTile(
-                title: alert.summary.isEmpty ? 'Unknown Anomaly' : alert.summary,
+                title: alert.summary.isEmpty
+                    ? 'Unknown Anomaly'
+                    : alert.summary,
                 time: alert.timestamp,
                 eventId: alert.eventId,
                 isCritical: alert.hasCriticalOxygen || alert.types.isEmpty,
@@ -384,7 +419,6 @@ class _AlertTile extends StatelessWidget {
     return '$hour:$min';
   }
 }
-
 
 class _TabConfig {
   const _TabConfig({

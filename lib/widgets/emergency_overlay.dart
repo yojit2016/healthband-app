@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_theme.dart';
 import '../models/emergency_event.dart';
-import '../providers/audio_settings_provider.dart';
-import '../providers/emergency_provider.dart';
+import '../providers/index.dart';
 
 /// Full-screen flashing red overlay triggered by emergencyProvider.
 /// Plays loops audio, shows notification, and simulates a contact alert.
@@ -20,25 +19,28 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _flashCtrl;
   late final Animation<double> _opacityAnim;
-  
+
   bool _isPlayingAudio = false;
 
   @override
   void initState() {
     super.initState();
     _flashCtrl = AnimationController(
-       vsync: this,
-       duration: const Duration(milliseconds: 600),
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
     );
-    _opacityAnim = Tween<double>(begin: 0.2, end: 0.85).animate(
-      CurvedAnimation(parent: _flashCtrl, curve: Curves.easeInOut),
-    );
+    _opacityAnim = Tween<double>(
+      begin: 0.2,
+      end: 0.85,
+    ).animate(CurvedAnimation(parent: _flashCtrl, curve: Curves.easeInOut));
   }
 
   /// Trigger side effects identically once per new emergency
   void _onEmergencyTriggered(EmergencyEvent event, bool audioEnabled) {
     debugPrint('[EmergencyOverlay] EMERGENCY EVENT DETECTED: ${event.eventId}');
-    debugPrint('[EmergencyOverlay] Alert trigger function called for: ${event.summary}');
+    debugPrint(
+      '[EmergencyOverlay] Alert trigger function called for: ${event.summary}',
+    );
 
     // 1. Flash the screen continuously
     _flashCtrl.repeat(reverse: true);
@@ -56,25 +58,27 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
     }
 
     // 3. Simulate sending SMS / API call to emergency contact
-    debugPrint('\n'
-               '=============================================\n'
-               '[CONTACT ALERT SENT]\n'
-               'Event ID:  ${event.eventId}\n'
-               'Time:      ${event.timestamp}\n'
-               'Issues:    ${event.summary}\n'
-               '=============================================\n');
+    debugPrint(
+      '\n'
+      '=============================================\n'
+      '[CONTACT ALERT SENT]\n'
+      'Event ID:  ${event.eventId}\n'
+      'Time:      ${event.timestamp}\n'
+      'Issues:    ${event.summary}\n'
+      '=============================================\n',
+    );
   }
 
   void _dismissAlarm() {
     // Stop the UI flashing and hide the overlay handled by Riverpod
     _flashCtrl.stop();
-    
+
     // Stop audio
     if (_isPlayingAudio) {
       FlutterRingtonePlayer().stop();
       _isPlayingAudio = false;
     }
-    
+
     // Tell the provider the user explicitly dismissed this alert
     ref.read(emergencyProvider.notifier).dismissAlarm();
   }
@@ -99,18 +103,27 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
       }
     });
 
-    final isTriggered = ref.watch(emergencyProvider.select((s) => s.isTriggered));
-    
+    final isTriggered = ref.watch(
+      emergencyProvider.select((s) => s.isTriggered),
+    );
+
     if (isTriggered) {
-      debugPrint('[EmergencyOverlay.build] UI Received ACTIVE emergency overlay state!');
+      debugPrint(
+        '[EmergencyOverlay.build] UI Received ACTIVE emergency overlay state!',
+      );
     }
-    
+
     if (!isTriggered) {
       return const SizedBox.shrink(); // Hide entirely when not active
     }
 
-    final latestEvent = ref.read(emergencyProvider).latestEvent;
-    
+    final providerState = ref.watch(emergencyProvider);
+    final latestEvent = providerState.latestEvent;
+    final reason =
+        providerState.reason ??
+        latestEvent?.summary ??
+        'Unknown critical alert';
+
     return Positioned.fill(
       child: Material(
         color: Colors.transparent,
@@ -118,14 +131,23 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
           animation: _opacityAnim,
           builder: (context, child) {
             return Container(
-              color: AppColors.error.withAlpha((255 * _opacityAnim.value).round()),
+              color: AppColors.error.withAlpha(
+                (255 * _opacityAnim.value).round(),
+              ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 40,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.warning_rounded, size: 96, color: Colors.white),
+                      const Icon(
+                        Icons.warning_rounded,
+                        size: 96,
+                        color: Colors.white,
+                      ),
                       const SizedBox(height: 24),
                       const Text(
                         'EMERGENCY DETECTED',
@@ -139,7 +161,7 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        latestEvent?.summary ?? 'Unknown critical alert',
+                        reason,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -148,7 +170,7 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
                         textAlign: TextAlign.center,
                       ),
                       const Spacer(),
-                      
+
                       // Dismiss Button
                       SizedBox(
                         width: double.infinity,
@@ -165,7 +187,7 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
                           child: const Text(
                             'DISMISS ALARM',
                             style: TextStyle(
-                              fontSize: 18, 
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -176,7 +198,7 @@ class _EmergencyOverlayState extends ConsumerState<EmergencyOverlay>
                         'This alert has been simulated to your emergency contacts.',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                         textAlign: TextAlign.center,
-                      )
+                      ),
                     ],
                   ),
                 ),

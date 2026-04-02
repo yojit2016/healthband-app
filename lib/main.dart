@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_theme.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/foreground_service.dart';
 import 'storage/index.dart';
@@ -34,11 +34,7 @@ Future<void> main() async {
   // route is determined synchronously.
   final bool isLoggedIn = HiveService.getLoginState();
 
-  runApp(
-    ProviderScope(
-      child: HealthBandApp(isLoggedIn: isLoggedIn),
-    ),
-  );
+  runApp(ProviderScope(child: HealthBandApp(isLoggedIn: isLoggedIn)));
 }
 
 class HealthBandApp extends StatelessWidget {
@@ -52,8 +48,8 @@ class HealthBandApp extends StatelessWidget {
       title: 'Health Band',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      // Route directly to dashboard if session exists, login otherwise
-      home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
+      // Route directly to home shell if session exists, login otherwise
+      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

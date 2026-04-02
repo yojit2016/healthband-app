@@ -18,10 +18,14 @@ class EmergencyState {
     this.latestEvent,
     this.isTriggered = false,
     this.history = const [],
+    this.reason,
   });
 
   /// The most recent emergency event received from the server.
   final EmergencyEvent? latestEvent;
+
+  /// Human-readable reason for the current emergency.
+  final String? reason;
 
   /// Becomes true ONLY when a brand new event is detected.
   /// Must be manually dismissed via the provider.
@@ -32,11 +36,13 @@ class EmergencyState {
 
   EmergencyState copyWith({
     EmergencyEvent? latestEvent,
+    String? reason,
     bool? isTriggered,
     List<EmergencyEvent>? history,
   }) {
     return EmergencyState(
       latestEvent: latestEvent ?? this.latestEvent,
+      reason: reason ?? this.reason,
       isTriggered: isTriggered ?? this.isTriggered,
       history: history ?? this.history,
     );
@@ -61,13 +67,15 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
     state = state.copyWith(
       history: HiveService.getAlerts(),
       isTriggered: HiveService.getEmergencyActive(),
-      latestEvent: HiveService.getAlerts().isNotEmpty ? HiveService.getAlerts().first : null,
+      latestEvent: HiveService.getAlerts().isNotEmpty
+          ? HiveService.getAlerts().first
+          : null,
     );
   }
 
   /// Start the 5-second polling loop.
   void _startPolling() {
-    _pollOnce(); // Fire immediately 
+    _pollOnce(); // Fire immediately
     _timer = Timer.periodic(_kPollInterval, (_) => _pollOnce());
   }
 
@@ -78,22 +86,24 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
     // Hot-sync history from Hive (in case background isolate appended an alert)
     final isActive = HiveService.getEmergencyActive();
     final history = HiveService.getAlerts();
-    
+
     state = state.copyWith(
       history: history,
       isTriggered: state.isTriggered || isActive,
-      latestEvent: state.latestEvent ?? (history.isNotEmpty ? history.first : null),
+      latestEvent:
+          state.latestEvent ?? (history.isNotEmpty ? history.first : null),
     );
 
     try {
       final result = await _api.getEmergencyEvents();
-      
+
       if (!mounted) return;
 
       if (result.isSuccess && result.data!.isNotEmpty) {
         // Assume the API might not sort perfectly, so find the newest locally
-        final newestEvent = result.data!.reduce((a, b) => 
-            a.timestamp.isAfter(b.timestamp) ? a : b);
+        final newestEvent = result.data!.reduce(
+          (a, b) => a.timestamp.isAfter(b.timestamp) ? a : b,
+        );
 
         // Check if this event is new and hasn't been triggered before
         if (newestEvent.eventId != _lastKnownEventId) {
@@ -125,6 +135,7 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
     // 2. Update state to trigger UI
     state = state.copyWith(
       latestEvent: event,
+      reason: event.summary,
       isTriggered: true,
       history: HiveService.getAlerts(),
     );
@@ -146,5 +157,5 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
 // ── Provider ─────────────────────────────────────────────────────────────────
 final emergencyProvider =
     StateNotifierProvider<EmergencyNotifier, EmergencyState>((ref) {
-  return EmergencyNotifier(ref.watch(apiServiceProvider));
-});
+      return EmergencyNotifier(ref.watch(apiServiceProvider));
+    });

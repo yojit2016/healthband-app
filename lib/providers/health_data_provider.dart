@@ -15,10 +15,10 @@ const _kFetchInterval = Duration(seconds: 5);
 HealthData _generateMockData() {
   final rng = math.Random();
   return HealthData(
-    id:          'mock-${DateTime.now().millisecondsSinceEpoch}',
-    heartRate:   60 + rng.nextInt(41),          // 60–100 BPM
-    spo2:        95 + rng.nextInt(6),           // 95–100 %
-    timestamp:   DateTime.now(),
+    id: 'mock-${DateTime.now().millisecondsSinceEpoch}',
+    heartRate: 60 + rng.nextInt(41), // 60–100 BPM
+    spo2: 95 + rng.nextInt(6), // 95–100 %
+    timestamp: DateTime.now(),
   );
 }
 
@@ -31,10 +31,14 @@ class DashboardState {
     required this.isLive,
     required this.isLoading,
     this.errorMessage,
+    this.lastUpdated,
   });
 
   /// Most recent reading (always non-null after first fetch)
   final HealthData? latest;
+
+  /// Timestamp of when the latest reading was fetched.
+  final DateTime? lastUpdated;
 
   /// Ring buffer of the last [_kHistoryLen] readings for sparklines
   final List<HealthData> history;
@@ -50,30 +54,32 @@ class DashboardState {
 
   // ── Derived helpers ───────────────────────────────────────────────────────
 
-  int get heartRate   => latest?.heartRate   ?? 0;
-  int get spo2        => latest?.spo2        ?? 0;
+  int get heartRate => latest?.heartRate ?? 0;
+  int get spo2 => latest?.spo2 ?? 0;
 
   List<double> get heartRateHistory =>
       history.map((d) => d.heartRate.toDouble()).toList();
-  List<double> get spo2History      =>
+  List<double> get spo2History =>
       history.map((d) => d.spo2.toDouble()).toList();
 
   // ── copyWith ──────────────────────────────────────────────────────────────
 
   DashboardState copyWith({
-    HealthData?       latest,
+    HealthData? latest,
     List<HealthData>? history,
-    bool?             isLive,
-    bool?             isLoading,
-    String?           errorMessage,
-    bool              clearError = false,
+    bool? isLive,
+    bool? isLoading,
+    String? errorMessage,
+    DateTime? lastUpdated,
+    bool clearError = false,
   }) {
     return DashboardState(
-      latest:       latest       ?? this.latest,
-      history:      history      ?? this.history,
-      isLive:       isLive       ?? this.isLive,
-      isLoading:    isLoading    ?? this.isLoading,
-      errorMessage: clearError   ? null : (errorMessage ?? this.errorMessage),
+      latest: latest ?? this.latest,
+      history: history ?? this.history,
+      isLive: isLive ?? this.isLive,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      lastUpdated: lastUpdated ?? this.lastUpdated,
     );
   }
 }
@@ -84,19 +90,21 @@ const _kHistoryLen = 20;
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
   DashboardNotifier(this._api)
-      : super(const DashboardState(
-          latest:    null,
-          history:   [],
-          isLive:    false,
+    : super(
+        const DashboardState(
+          latest: null,
+          history: [],
+          isLive: false,
           isLoading: true,
-        )) {
+        ),
+      ) {
     // Fetch immediately, then on a fixed 5-second interval.
     _fetchOnce();
     _timer = Timer.periodic(_kFetchInterval, (_) => _fetchOnce());
   }
 
   final ApiService _api;
-  Timer?           _timer;
+  Timer? _timer;
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -136,22 +144,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     required bool isLive,
     String? error,
   }) {
-    final newHistory = [
-      ...state.history,
-      reading,
-    ];
+    final newHistory = [...state.history, reading];
     // Keep only the last N entries to avoid unbounded memory growth
     final trimmed = newHistory.length > _kHistoryLen
         ? newHistory.sublist(newHistory.length - _kHistoryLen)
         : newHistory;
 
     state = state.copyWith(
-      latest:       reading,
-      history:      trimmed,
-      isLive:       isLive,
-      isLoading:    false,
+      latest: reading,
+      history: trimmed,
+      isLive: isLive,
+      isLoading: false,
       errorMessage: error,
-      clearError:   error == null,
+      lastUpdated: DateTime.now(),
+      clearError: error == null,
     );
   }
 
@@ -176,5 +182,5 @@ final apiServiceProvider = Provider<ApiService>((_) => ApiService());
 /// Dashboard state: polls every 5 s, falls back to mock on failure.
 final dashboardProvider =
     StateNotifierProvider<DashboardNotifier, DashboardState>(
-  (ref) => DashboardNotifier(ref.watch(apiServiceProvider)),
-);
+      (ref) => DashboardNotifier(ref.watch(apiServiceProvider)),
+    );
