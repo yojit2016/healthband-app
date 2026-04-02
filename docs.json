@@ -1,0 +1,1089 @@
+{
+  "/emergency-contacts": {
+    "get": {
+      "summary": "Get all emergency contacts",
+      "tags": [
+        "Emergency Contacts"
+      ],
+      "responses": {
+        "200": {
+          "description": "List of all active emergency contacts",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/EmergencyContact"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "summary": "Add a new emergency contact",
+      "tags": [
+        "Emergency Contacts"
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "name",
+                "phoneNumber",
+                "email",
+                "relation"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "John Doe"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "example": "9876543210"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "example": "john@example.com"
+                },
+                "relation": {
+                  "type": "string",
+                  "description": "Must be one of the defined relation types (e.g. Father, Mother, Sibling)",
+                  "example": "Father"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Emergency contact created successfully",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "New emergency contact successfully created"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/EmergencyContact"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Missing required fields",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/emergency-contacts/{id}": {
+    "delete": {
+      "summary": "Remove (soft-delete) an emergency contact",
+      "tags": [
+        "Emergency Contacts"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the emergency contact",
+          "example": "664f1b2c9e4b2a001c8d0001"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Emergency contact successfully removed",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Emergency contact successfully removed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Contact not found",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    },
+    "patch": {
+      "summary": "Edit an existing emergency contact",
+      "tags": [
+        "Emergency Contacts"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the emergency contact",
+          "example": "664f1b2c9e4b2a001c8d0001"
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Jane Doe"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "example": "9999999999"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "example": "jane@example.com"
+                },
+                "relation": {
+                  "type": "string",
+                  "example": "Mother"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Emergency contact updated successfully",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Emergency contact updated successfully"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/EmergencyContact"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Contact ID is required",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/emergency-events": {
+    "get": {
+      "summary": "Get all emergency events",
+      "description": "Returns a list of all emergency events. Supports optional filtering by event type and date range.",
+      "tags": [
+        "Emergency Events"
+      ],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "emergencyType",
+          "schema": {
+            "type": "string"
+          },
+          "description": "Filter by a specific emergency type string (e.g. CRITICALLY_HIGH_PULSE)",
+          "example": "CRITICALLY_HIGH_PULSE"
+        },
+        {
+          "in": "query",
+          "name": "from",
+          "schema": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": "Start date filter (inclusive)",
+          "example": "2024-01-01"
+        },
+        {
+          "in": "query",
+          "name": "to",
+          "schema": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": "End date filter (inclusive, includes end of that day)",
+          "example": "2024-01-31"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "List of emergency events",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/EmergencyEvent"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/health-data": {
+    "get": {
+      "summary": "Get the latest health data reading",
+      "tags": [
+        "Health Data"
+      ],
+      "responses": {
+        "200": {
+          "description": "Latest health data record",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/HealthData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "No health data available",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    },
+    "post": {
+      "summary": "Record new health data (from ESP32 hardware)",
+      "tags": [
+        "Health Data"
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "pulse",
+                "oxygen"
+              ],
+              "properties": {
+                "pulse": {
+                  "type": "number",
+                  "description": "Heart rate in BPM",
+                  "example": 78
+                },
+                "oxygen": {
+                  "type": "number",
+                  "description": "Blood oxygen saturation (SpO2) percentage",
+                  "example": 97
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Health data recorded successfully",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Health data recorded successfully"
+                  },
+                  "isEmergency": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "emergencyType": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": []
+                  },
+                  "summaryMessage": {
+                    "type": "string",
+                    "example": "All vitals are normal"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Pulse and oxygen values are required",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/health-data/summary": {
+    "get": {
+      "summary": "Get health data dashboard summary",
+      "description": "Returns the latest readings from the past 5 minutes, average vitals, 24-hour statistics, and device status.",
+      "tags": [
+        "Health Data"
+      ],
+      "responses": {
+        "200": {
+          "description": "Health data summary for the dashboard",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "healthData": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/HealthData"
+                        }
+                      },
+                      "averageData": {
+                        "type": "object",
+                        "description": "Average pulse and oxygen over the recent window",
+                        "properties": {
+                          "pulse": {
+                            "type": "number",
+                            "example": 76
+                          },
+                          "oxygen": {
+                            "type": "number",
+                            "example": 97
+                          }
+                        }
+                      },
+                      "statistics": {
+                        "type": "object",
+                        "description": "24-hour health statistics"
+                      },
+                      "message": {
+                        "type": "string",
+                        "example": "All vitals are normal"
+                      },
+                      "deviceStatus": {
+                        "type": "object",
+                        "description": "Current device connectivity status"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/health-data/insights": {
+    "get": {
+      "summary": "Get health data insights with optional filters",
+      "tags": [
+        "Health Data"
+      ],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "from",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": "Start date-time filter (ISO 8601)",
+          "example": "2024-01-01T00:00:00Z"
+        },
+        {
+          "in": "query",
+          "name": "to",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": "End date-time filter (ISO 8601)",
+          "example": "2024-01-31T23:59:59Z"
+        },
+        {
+          "in": "query",
+          "name": "type",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "critical"
+            ]
+          },
+          "description": "Filter results to only warning or critical events"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Health data history and statistics",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "healthData": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/HealthData"
+                        }
+                      },
+                      "statistics": {
+                        "type": "object",
+                        "description": "Aggregated statistics for the filtered range"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/health-data/heatmap/monthly": {
+    "get": {
+      "summary": "Get monthly health data heatmap",
+      "description": "Returns daily aggregated health data for a given month and year, suitable for a calendar heatmap view.",
+      "tags": [
+        "Health Data"
+      ],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "month",
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 11
+          },
+          "description": "Month index (0 = January, 11 = December). Defaults to the current month.",
+          "example": 0
+        },
+        {
+          "in": "query",
+          "name": "year",
+          "schema": {
+            "type": "integer"
+          },
+          "description": "Full year (e.g. 2024). Defaults to the current year.",
+          "example": 2024
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Monthly heatmap data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "heatmap": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string",
+                          "format": "date",
+                          "example": "2024-01-15"
+                        },
+                        "avgPulse": {
+                          "type": "number",
+                          "example": 76
+                        },
+                        "avgOxygen": {
+                          "type": "number",
+                          "example": 97
+                        },
+                        "count": {
+                          "type": "integer",
+                          "example": 48
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/medications": {
+    "post": {
+      "summary": "Add a new medication schedule",
+      "tags": [
+        "Medications"
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "medicineName",
+                "amount",
+                "unit",
+                "form",
+                "times",
+                "startDate"
+              ],
+              "properties": {
+                "medicineName": {
+                  "type": "string",
+                  "example": "Aspirin"
+                },
+                "amount": {
+                  "type": "number",
+                  "description": "Dosage amount",
+                  "example": 500
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Dosage unit (e.g. mg, ml)",
+                  "example": "mg"
+                },
+                "form": {
+                  "type": "string",
+                  "description": "Dosage form (e.g. tablet, syrup)",
+                  "example": "tablet"
+                },
+                "instructions": {
+                  "type": "string",
+                  "example": "Take after meals"
+                },
+                "times": {
+                  "type": "array",
+                  "description": "Scheduled times in HH:MM format (24-hour)",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$"
+                  },
+                  "example": [
+                    "08:00",
+                    "20:00"
+                  ]
+                },
+                "startDate": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2024-01-01"
+                },
+                "endDate": {
+                  "type": "string",
+                  "format": "date",
+                  "nullable": true,
+                  "example": "2024-01-31"
+                },
+                "prescribedBy": {
+                  "type": "string",
+                  "nullable": true,
+                  "example": "Dr. Smith"
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Medication schedule created",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/MedicationSchedule"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Validation error",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    },
+    "get": {
+      "summary": "Get all medication schedules",
+      "tags": [
+        "Medications"
+      ],
+      "responses": {
+        "200": {
+          "description": "List of all medication schedules",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/MedicationSchedule"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/medications/{id}": {
+    "patch": {
+      "summary": "Edit a medication schedule",
+      "tags": [
+        "Medications"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the medication schedule",
+          "example": "664f1b2c9e4b2a001c8d1234"
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "medicineName": {
+                  "type": "string",
+                  "example": "Paracetamol"
+                },
+                "instructions": {
+                  "type": "string",
+                  "example": "Take before meals"
+                },
+                "times": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "07:00",
+                    "19:00"
+                  ]
+                },
+                "endDate": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2024-02-28"
+                },
+                "isActive": {
+                  "type": "boolean",
+                  "example": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Medication schedule updated",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/MedicationSchedule"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Medication not found",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    },
+    "delete": {
+      "summary": "Deactivate (soft-delete) a medication schedule",
+      "tags": [
+        "Medications"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the medication schedule",
+          "example": "664f1b2c9e4b2a001c8d1234"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Medication deactivated",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Medication deactivated"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Medication not found",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/medications/reminder/{id}/taken": {
+    "patch": {
+      "summary": "Mark a medication reminder as taken",
+      "tags": [
+        "Medications"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the reminder log entry",
+          "example": "664f1b2c9e4b2a001c8dabc1"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Reminder marked as taken",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Updated reminder log entry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Reminder not found",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/medications/medication-reminder": {
+    "get": {
+      "summary": "Manually trigger the medication reminder scheduler",
+      "description": "Runs the medication scheduler job on demand. Normally executed by an external cron trigger (e.g. Vercel cron).",
+      "tags": [
+        "Medications"
+      ],
+      "responses": {
+        "200": {
+          "description": "Medication scheduler executed successfully",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Medication scheduler executed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/notifications": {
+    "get": {
+      "summary": "Get all notifications sent across all emergencies",
+      "tags": [
+        "Notifications"
+      ],
+      "responses": {
+        "200": {
+          "description": "List of all notification records",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Notification"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/notifications/emergency/{id}": {
+    "get": {
+      "summary": "Get all notifications for a specific emergency event",
+      "tags": [
+        "Notifications"
+      ],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MongoDB ObjectId of the emergency event",
+          "example": "664f1b2c9e4b2a001c8d5678"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "List of notifications for the specified emergency",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "message": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Notification"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Emergency event not found",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

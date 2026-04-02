@@ -1,23 +1,21 @@
 import 'package:dio/dio.dart';
 
-import '../models/emergency_event.dart';
-import '../models/health_data.dart';
+import '../models/index.dart';
 
 // ── Result wrapper ────────────────────────────────────────────────────────────
 
 /// Wraps an API response: either [data] on success or [error] on failure.
-/// Use [isSuccess] / [isError] to branch, never throws.
 class ApiResult<T> {
   const ApiResult._({this.data, this.error});
 
   const ApiResult.success(T data) : this._(data: data);
   const ApiResult.failure(String error) : this._(error: error);
 
-  final T?      data;
+  final T? data;
   final String? error;
 
   bool get isSuccess => data != null;
-  bool get isError   => error != null;
+  bool get isError => error != null;
 
   @override
   String toString() =>
@@ -30,11 +28,7 @@ class ApiService {
   ApiService() : _dio = _buildDio();
 
   final Dio _dio;
-
-  static const String _baseUrl =
-      'https://health-band-server.vercel.app/api/v1';
-
-  // ── Dio factory ──────────────────────────────────────────────────────────
+  static const String _baseUrl = 'https://health-band-server.vercel.app/api/v1';
 
   static Dio _buildDio() {
     final dio = Dio(
@@ -49,7 +43,6 @@ class ApiService {
       ),
     );
 
-    // Always log errors and request details securely
     dio.interceptors.add(
       LogInterceptor(
         requestBody: false,
@@ -62,74 +55,236 @@ class ApiService {
     return dio;
   }
 
-  // ── GET /health-data ─────────────────────────────────────────────────────
+  // ── Health Data ─────────────────────────────────────────────────────────────
 
-  /// Fetches all health readings.
-  /// Returns [ApiResult.success] with a typed list on success,
-  /// or [ApiResult.failure] with a user-friendly message on error.
-  Future<ApiResult<List<HealthData>>> getHealthData() async {
-    return _getWithRetry<List<HealthData>>(
-      '/health-data',
-      (rawList) => rawList
-          .whereType<Map<String, dynamic>>()
-          .map(HealthData.fromJson)
-          .toList(),
+  Future<ApiResult<HealthData>> getLatestHealthData() async {
+    return _requestWithRetry<HealthData>(
+      method: 'GET',
+      path: '/health-data',
+      parser: (data) => HealthData.fromJson(data as Map<String, dynamic>),
     );
   }
 
-  // ── GET /emergency-events ─────────────────────────────────────────────────
+  Future<ApiResult<HealthDataSummary>> getHealthDataSummary() async {
+    return _requestWithRetry<HealthDataSummary>(
+      method: 'GET',
+      path: '/health-data/summary',
+      parser: (data) => HealthDataSummary.fromJson(data as Map<String, dynamic>),
+    );
+  }
 
-  /// Fetches standalone emergency events.
-  Future<ApiResult<List<EmergencyEvent>>> getEmergencyEvents() async {
-    return _getWithRetry<List<EmergencyEvent>>(
-      '/emergency-events',
-      (rawList) => rawList
+  Future<ApiResult<List<MonthlyHeatmapData>>> getHealthDataHeatmap({int? month, int? year}) async {
+    return _requestWithRetry<List<MonthlyHeatmapData>>(
+      method: 'GET',
+      path: '/health-data/heatmap/monthly',
+      queryParameters: {
+        'month': month,
+        'year': year,
+      }..removeWhere((k, v) => v == null),
+      parser: (data) => (data as Map<String, dynamic>)['heatmap'] != null
+          ? ((data)['heatmap'] as List<dynamic>)
+              .whereType<Map<String, dynamic>>()
+              .map(MonthlyHeatmapData.fromJson)
+              .toList()
+          : [],
+      extractFromDataRaw: true,
+    );
+  }
+
+  // ── Emergency Events ────────────────────────────────────────────────────────
+
+  Future<ApiResult<List<EmergencyEvent>>> getEmergencyEvents({
+    String? type,
+    String? from,
+    String? to,
+  }) async {
+    return _requestWithRetry<List<EmergencyEvent>>(
+      method: 'GET',
+      path: '/emergency-events',
+      queryParameters: {
+        'emergencyType': type,
+        'from': from,
+        'to': to,
+      }..removeWhere((k, v) => v == null),
+      parser: (data) => (data as List<dynamic>)
           .whereType<Map<String, dynamic>>()
           .map(EmergencyEvent.fromJson)
           .toList(),
     );
   }
 
-  // ── Core Request Helper with Retry ────────────────────────────────────────
+  // ── Emergency Contacts ──────────────────────────────────────────────────────
 
-  Future<ApiResult<T>> _getWithRetry<T>(
-    String path,
-    T Function(List<dynamic> rawList) parser, {
+  Future<ApiResult<List<EmergencyContact>>> getEmergencyContacts() async {
+    return _requestWithRetry<List<EmergencyContact>>(
+      method: 'GET',
+      path: '/emergency-contacts',
+      parser: (data) => (data as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(EmergencyContact.fromJson)
+          .toList(),
+    );
+  }
+
+  Future<ApiResult<EmergencyContact>> createEmergencyContact(Map<String, dynamic> body) async {
+    return _requestWithRetry<EmergencyContact>(
+      method: 'POST',
+      path: '/emergency-contacts',
+      data: body,
+      parser: (data) => EmergencyContact.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<EmergencyContact>> updateEmergencyContact(String id, Map<String, dynamic> body) async {
+    return _requestWithRetry<EmergencyContact>(
+      method: 'PATCH',
+      path: '/emergency-contacts/$id',
+      data: body,
+      parser: (data) => EmergencyContact.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<bool>> deleteEmergencyContact(String id) async {
+    return _requestWithRetry<bool>(
+      method: 'DELETE',
+      path: '/emergency-contacts/$id',
+      parser: (_) => true,
+    );
+  }
+
+  // ── Medications ─────────────────────────────────────────────────────────────
+
+  Future<ApiResult<List<MedicationSchedule>>> getMedications() async {
+    return _requestWithRetry<List<MedicationSchedule>>(
+      method: 'GET',
+      path: '/medications',
+      parser: (data) => (data as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(MedicationSchedule.fromJson)
+          .toList(),
+    );
+  }
+
+  Future<ApiResult<MedicationSchedule>> createMedication(Map<String, dynamic> body) async {
+    return _requestWithRetry<MedicationSchedule>(
+      method: 'POST',
+      path: '/medications',
+      data: body,
+      parser: (data) => MedicationSchedule.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<MedicationSchedule>> updateMedication(String id, Map<String, dynamic> body) async {
+    return _requestWithRetry<MedicationSchedule>(
+      method: 'PATCH',
+      path: '/medications/$id',
+      data: body,
+      parser: (data) => MedicationSchedule.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<bool>> deleteMedication(String id) async {
+    return _requestWithRetry<bool>(
+      method: 'DELETE',
+      path: '/medications/$id',
+      parser: (_) => true,
+    );
+  }
+
+  Future<ApiResult<bool>> markMedicationTaken(String id) async {
+    return _requestWithRetry<bool>(
+      method: 'PATCH',
+      path: '/medications/reminder/$id/taken',
+      parser: (_) => true,
+    );
+  }
+
+  // ── Notifications ───────────────────────────────────────────────────────────
+
+  Future<ApiResult<List<Notification>>> getNotifications() async {
+    return _requestWithRetry<List<Notification>>(
+      method: 'GET',
+      path: '/notifications',
+      parser: (data) => (data as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(Notification.fromJson)
+          .toList(),
+      dataField: 'message', // notifications often use 'message' instead of 'data' based on schema
+    );
+  }
+
+  Future<ApiResult<List<Notification>>> getNotificationsForEmergency(String id) async {
+    return _requestWithRetry<List<Notification>>(
+      method: 'GET',
+      path: '/notifications/emergency/$id',
+      parser: (data) => (data as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map(Notification.fromJson)
+          .toList(),
+      dataField: 'message',
+    );
+  }
+
+  // ── Core Request Helper ─────────────────────────────────────────────────────
+
+  Future<ApiResult<T>> _requestWithRetry<T>({
+    required String method,
+    required String path,
+    required T Function(dynamic data) parser,
+    Map<String, dynamic>? queryParameters,
+    dynamic data,
+    String dataField = 'data',
+    bool extractFromDataRaw = false,
     int maxRetries = 2,
   }) async {
     int attempts = 0;
     while (true) {
       try {
-        final response = await _dio.get<Map<String, dynamic>>(path);
+        final response = await _dio.request<Map<String, dynamic>>(
+          path,
+          data: data,
+          queryParameters: queryParameters,
+          options: Options(method: method),
+        );
 
         final body = response.data;
         if (body == null) {
           return const ApiResult.failure('Empty response from server.');
         }
 
-        // Validate envelope
         final success = body['success'] as bool? ?? false;
         if (!success) {
           final msg = body['message'] as String? ?? 'Server returned an error.';
-          return ApiResult.failure(msg);
+          if (response.statusCode != 200 && response.statusCode != 201) {
+            return ApiResult.failure(msg);
+          }
         }
 
-        final rawList = body['data'] as List<dynamic>?;
-        if (rawList == null) {
-          return const ApiResult.failure('Malformed response: missing data.');
+        if (extractFromDataRaw) {
+            _log('Success: $method $path');
+            return ApiResult.success(parser(body));
         }
 
-        return ApiResult.success(parser(rawList));
+        /// Sometimes endpoints return data directly in `data` or `message`
+        dynamic responseData = body[dataField];
+        if (responseData == null && success) {
+            // Some endpoints might not have a data wrapper
+            _log('Success: $method $path');
+            return ApiResult.success(parser(body));
+        }
+
+        _log('Success: $method $path');
+        return ApiResult.success(parser(responseData));
       } on DioException catch (e) {
         attempts++;
-        _log('DioError on $path (Attempt $attempts/$maxRetries): ${e.message}');
+        _log('DioError on $method $path (Attempt $attempts/$maxRetries): ${e.message}');
         if (attempts >= maxRetries) {
           return ApiResult.failure(_handleDioError(e));
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
       } catch (e, stack) {
         attempts++;
-        _log('Exception on $path (Attempt $attempts/$maxRetries): $e\n$stack');
+        _log('Exception on $method $path (Attempt $attempts/$maxRetries): $e\n$stack');
         if (attempts >= maxRetries) {
           return ApiResult.failure('Unexpected error: $e');
         }
@@ -138,29 +293,7 @@ class ApiService {
     }
   }
 
-  // ── Convenience: extract events from health-data ──────────────────────────
-
-  /// Extracts [EmergencyEvent] objects from the embedded `emergencyEvent`
-  /// field inside each [HealthData] record.
-  ///
-  /// Use this as a fallback when [getEmergencyEvents] fails.
-  static List<EmergencyEvent> extractEventsFromHealthData(
-    List<HealthData> records,
-  ) {
-    return records
-        .where((r) => r.embeddedEvent != null)
-        .map(
-          (r) => EmergencyEvent(
-            eventId:      r.embeddedEvent!.id,
-            healthDataId: r.id,
-            types:        r.embeddedEvent!.emergencyTypes,
-            timestamp:    r.embeddedEvent!.timestamp,
-          ),
-        )
-        .toList();
-  }
-
-  // ── Error handling ────────────────────────────────────────────────────────
+  // ── Error handling ──────────────────────────────────────────────────────────
 
   static String _handleDioError(DioException e) {
     switch (e.type) {
@@ -172,6 +305,10 @@ class ApiService {
         return 'Could not reach the server. Check your network.';
       case DioExceptionType.badResponse:
         final code = e.response?.statusCode;
+        final msg = (e.response?.data is Map<String, dynamic>)
+            ? e.response?.data['message']
+            : null;
+        if (msg != null) return msg.toString();
         return 'Server error (HTTP $code).';
       case DioExceptionType.cancel:
         return 'Request was cancelled.';

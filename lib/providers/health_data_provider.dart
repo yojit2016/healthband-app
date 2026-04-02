@@ -107,13 +107,12 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     _inflight = true;
 
     try {
-      final result = await _api.getHealthData();
+      final result = await _api.getLatestHealthData();
 
       if (!mounted) return; // widget tree may have been disposed
 
-      if (result.isSuccess && result.data!.isNotEmpty) {
-        // Pick the most-recent record (index 0 = newest per API ordering)
-        final newest = result.data!.first;
+      if (result.isSuccess && result.data != null) {
+        final newest = result.data!;
         _appendReading(newest, isLive: true);
       } else {
         // API returned success=false or empty list → fall back to mock

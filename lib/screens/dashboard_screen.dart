@@ -11,6 +11,9 @@ import '../widgets/emergency_overlay.dart';
 import '../providers/audio_settings_provider.dart';
 import '../services/foreground_service.dart';
 import 'login_screen.dart';
+import 'medications_tab.dart';
+import 'contacts_tab.dart';
+import 'notifications_tab.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -28,17 +31,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         icon: Icons.monitor_heart_outlined,
         activeIcon: Icons.monitor_heart),
     _TabConfig(
-        label: 'Activity',
-        icon: Icons.directions_run_outlined,
-        activeIcon: Icons.directions_run),
+        label: 'Medications',
+        icon: Icons.medical_services_outlined,
+        activeIcon: Icons.medical_services),
     _TabConfig(
-        label: 'Reports',
-        icon: Icons.bar_chart_outlined,
-        activeIcon: Icons.bar_chart),
+        label: 'Contacts',
+        icon: Icons.contacts_outlined,
+        activeIcon: Icons.contacts),
     _TabConfig(
-        label: 'Settings',
-        icon: Icons.settings_outlined,
-        activeIcon: Icons.settings),
+        label: 'Alerts',
+        icon: Icons.notifications_none_outlined,
+        activeIcon: Icons.notifications),
   ];
 
   @override
@@ -69,10 +72,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           appBar: _buildAppBar(),
           body: _currentIndex == 0
               ? const _DashboardTab()
-              : _PlaceholderPage(
-                  tabIndex: _currentIndex,
-                  label: _tabs[_currentIndex].label,
-                ),
+              : _currentIndex == 1
+                  ? const MedicationsTab()
+                  : _currentIndex == 2
+                      ? const ContactsTab()
+                      : const NotificationsTab(),
           bottomNavigationBar: _buildBottomNav(),
         ),
         const EmergencyOverlay(),
@@ -381,58 +385,6 @@ class _AlertTile extends StatelessWidget {
   }
 }
 
-// ── Placeholder tab page ──────────────────────────────────────────────────────
-
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.tabIndex, required this.label});
-
-  final int tabIndex;
-  final String label;
-
-  static const List<IconData> _icons = [
-    Icons.monitor_heart,
-    Icons.directions_run,
-    Icons.bar_chart,
-    Icons.settings,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppColors.primaryGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withAlpha((255 * 0.35).round()),
-                  blurRadius: 24,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-            child: Icon(_icons[tabIndex], size: 44, color: Colors.white),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Screen coming soon',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _TabConfig {
   const _TabConfig({
