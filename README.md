@@ -2,7 +2,7 @@
 
 A Flutter-based mobile application that simulates a real-time health monitoring system with emergency alert functionality.
 
-## � Screenshots
+## 📸 Screenshots
 
 | Dashboard | Emergency Alert |
 |----------|----------------|
