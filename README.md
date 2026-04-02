@@ -2,6 +2,18 @@
 
 A Flutter-based mobile application that simulates a real-time health monitoring system with emergency alert functionality.
 
+## � Screenshots
+
+| Dashboard | Emergency Alert |
+|----------|----------------|
+| ![](screenshots/dashboard.png) | ![](screenshots/emergency.png) |
+
+| Medications | Notifications |
+|------------|--------------|
+| ![](screenshots/medications.png) | ![](screenshots/notifications.png) |
+
+*See [screenshots/README.md](screenshots/README.md) for instructions on adding images*
+
 ## 🚀 Features
 
 - 🔐 **Authentication**
@@ -23,12 +35,26 @@ A Flutter-based mobile application that simulates a real-time health monitoring 
     - Alarm sound (user-enabled)
     - High-priority notifications
 
+- 💊 **Medication Tracking**
+  - Mark medications as taken
+  - Immediate UI updates
+  - Pull-to-refresh functionality
+
+- 👥 **Contacts & Notifications**
+  - Emergency contacts management
+  - Notification history
+  - Pull-to-refresh on all lists
+
 - 🔄 **Background Processing**
   - Uses foreground services for continuous monitoring
 
 - 💾 **Alert History**
   - Stores recent emergency events locally using Hive
   - Displays last 10 alerts
+
+## 🏗️ Architecture
+
+API → Service → Provider → UI
 
 ## 🛠 Tech Stack
 
@@ -57,16 +83,25 @@ A Flutter-based mobile application that simulates a real-time health monitoring 
 
 ## 📱 Demo Flow
 
-1. Login with test credentials  
-2. View live health metrics  
-3. Detect abnormal vitals  
-4. Trigger emergency alert  
-5. View alert history  
+1. Login with test credentials
+2. View live health metrics
+3. Detect abnormal vitals
+4. Trigger emergency alert
+5. View alert history
+6. Manage medications and contacts
 
 ## 🔑 Test Credentials
 
-- Email: user@test.com  
-- Password: password123  
+- Email: user@test.com
+- Password: password123
+
+## 📥 APK Download
+
+[Download APK](#)
+
+## 👨‍💻 Author
+
+Yojit Pahwa
 
 ## ⚠️ Note
 
