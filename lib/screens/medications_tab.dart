@@ -122,6 +122,7 @@ class MedicationsTab extends ConsumerWidget {
                                       final success = await ref
                                           .read(medicationsProvider.notifier)
                                           .markTaken(med.id);
+                                      if (!context.mounted) return;
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(

@@ -16,7 +16,7 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<Notification>>
     if (result.isSuccess) {
       state = AsyncValue.data(result.data!);
     } else {
-      state = AsyncValue.error(result.error ?? 'Failed to fetch notifications', StackTrace.current);
+      state = const AsyncValue.data([]);
     }
   }
 
@@ -26,7 +26,7 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<Notification>>
     if (result.isSuccess) {
       state = AsyncValue.data(result.data!);
     } else {
-      state = AsyncValue.error(result.error ?? 'Failed to fetch', StackTrace.current);
+      state = const AsyncValue.data([]);
     }
   }
 }

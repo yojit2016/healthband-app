@@ -6,12 +6,10 @@ import '../providers/index.dart';
 import '../widgets/metric_card.dart';
 import '../widgets/system_pulse.dart';
 import '../widgets/emergency_overlay.dart';
-import '../providers/audio_settings_provider.dart';
 import '../services/foreground_service.dart';
 import 'login_screen.dart';
 import 'medications_tab.dart';
 import 'contacts_tab.dart';
-import 'notifications_tab.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -39,11 +37,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       icon: Icons.contacts_outlined,
       activeIcon: Icons.contacts,
     ),
-    _TabConfig(
-      label: 'Alerts',
-      icon: Icons.notifications_none_outlined,
-      activeIcon: Icons.notifications,
-    ),
   ];
 
   @override
@@ -68,21 +61,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: _buildAppBar(),
-          body: _currentIndex == 0
-              ? const DashboardTab()
-              : _currentIndex == 1
-              ? const MedicationsTab()
-              : _currentIndex == 2
-              ? const ContactsTab()
-              : const NotificationsTab(),
-          bottomNavigationBar: _buildBottomNav(),
-        ),
-        const EmergencyOverlay(),
-      ],
+    return SafeArea(
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: _buildAppBar(),
+            body: _currentIndex == 0
+                ? const DashboardTab()
+                : _currentIndex == 1
+                ? const MedicationsTab()
+                : const ContactsTab(),
+            bottomNavigationBar: _buildBottomNav(),
+          ),
+          const EmergencyOverlay(),
+        ],
+      ),
     );
   }
 
@@ -146,7 +139,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 // ── Dashboard Tab (Live Data) ────────────────────────────────────────────────
 
 class DashboardTab extends ConsumerWidget {
-  const DashboardTab();
+  const DashboardTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -168,14 +161,35 @@ class DashboardTab extends ConsumerWidget {
       onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
       color: AppColors.primary,
       backgroundColor: AppColors.surfaceVariant,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Header row with pulse & audio button
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+          // Header row with pulse, time, & audio button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SystemPulse(isLive: state.isLive),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SystemPulse(isLive: state.isLive),
+                    if (state.lastUpdated != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Last updated: ${state.lastUpdated!.hour.toString().padLeft(2, '0')}:${state.lastUpdated!.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
               TextButton.icon(
                 onPressed: () =>
                     ref.read(audioSettingsProvider.notifier).toggle(),
@@ -207,89 +221,62 @@ class DashboardTab extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
-          // Last updated timestamp
-          if (state.lastUpdated != null)
-            Text(
-              'Last updated: ${state.lastUpdated!.hour.toString().padLeft(2, '0')}:${state.lastUpdated!.minute.toString().padLeft(2, '0')}:${state.lastUpdated!.second.toString().padLeft(2, '0')}',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-          const SizedBox(height: 8),
-
-          // Error banner
+          // Subtle offline indicator
           if (state.errorMessage != null && !state.isLive) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.error.withAlpha((255 * 0.1).round()),
-                border: Border.all(
-                  color: AppColors.error.withAlpha((255 * 0.3).round()),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Device offline',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textDisabled,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.error,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'API Error: ${state.errorMessage}. Falling back to mock data.',
-                      style: const TextStyle(
-                        color: AppColors.error,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
-            const SizedBox(height: 16),
           ],
 
-          // Grid of metrics
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.85,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              MetricCard(
-                title: 'Heart Rate',
-                value: data.heartRate.toString(),
-                unit: 'bpm',
-                icon: Icons.favorite,
-                accentColor: AppColors.error,
-                sparklineData: state.heartRateHistory,
-                status: data.isNormal ? 'Normal' : 'High',
-                statusColor: data.isNormal
-                    ? AppColors.success
-                    : AppColors.error,
-              ),
-              MetricCard(
-                title: 'Blood Oxygen',
-                value: data.spo2.toString(),
-                unit: '%',
-                icon: Icons.air,
-                accentColor: AppColors.primary,
-                sparklineData: state.spo2History,
-                status: data.spo2 >= 95 ? 'Normal' : 'Low',
-                statusColor: data.spo2 >= 95
-                    ? AppColors.success
-                    : AppColors.warning,
-                minY: 90,
-                maxY: 100,
-              ),
-            ],
+          // Grid of metrics natively replaced by Row
+          SizedBox(
+            height: 180,
+            child: Row(
+              children: [
+                Expanded(
+                  child: MetricCard(
+                    title: 'Heart Rate',
+                    value: data.heartRate.toString(),
+                    unit: 'bpm',
+                    icon: Icons.favorite,
+                    accentColor: AppColors.error,
+                    sparklineData: state.heartRateHistory,
+                    status: data.isNormal ? 'Normal' : 'High',
+                    statusColor: data.isNormal
+                        ? AppColors.success
+                        : AppColors.error,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: MetricCard(
+                    title: 'Blood Oxygen',
+                    value: data.spo2.toString(),
+                    unit: '%',
+                    icon: Icons.air,
+                    accentColor: AppColors.primary,
+                    sparklineData: state.spo2History,
+                    status: data.spo2 >= 95 ? 'Normal' : 'Low',
+                    statusColor: data.spo2 >= 95
+                        ? AppColors.success
+                        : AppColors.warning,
+                    minY: 90,
+                    maxY: 100,
+                  ),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -326,7 +313,9 @@ class DashboardTab extends ConsumerWidget {
                 isCritical: alert.hasCriticalOxygen || alert.types.isEmpty,
               );
             }),
-        ],
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }

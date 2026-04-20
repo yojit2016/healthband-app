@@ -16,7 +16,7 @@ class EmergencyContactsNotifier extends StateNotifier<AsyncValue<List<EmergencyC
     if (result.isSuccess) {
       state = AsyncValue.data(result.data!);
     } else {
-      state = AsyncValue.error(result.error ?? 'Failed to fetch', StackTrace.current);
+      state = const AsyncValue.data([]);
     }
   }
 

@@ -6,7 +6,6 @@ import '../widgets/emergency_overlay.dart';
 import 'dashboard_screen.dart';
 import 'medications_tab.dart';
 import 'contacts_tab.dart';
-import 'notifications_tab.dart';
 
 /// Root shell screen that hosts the bottom-navigation tabs.
 /// Emergency overlay is global and controlled by Riverpod state.
@@ -37,29 +36,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       icon: Icons.contacts_outlined,
       activeIcon: Icons.contacts,
     ),
-    _TabConfig(
-      label: 'Alerts',
-      icon: Icons.notifications_none_outlined,
-      activeIcon: Icons.notifications,
-    ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          body: _currentIndex == 0
-              ? const DashboardTab()
-              : _currentIndex == 1
-              ? const MedicationsTab()
-              : _currentIndex == 2
-              ? const ContactsTab()
-              : const NotificationsTab(),
-          bottomNavigationBar: _buildBottomNav(),
-        ),
-        const EmergencyOverlay(),
-      ],
+    return SafeArea(
+      child: Stack(
+        children: [
+          Scaffold(
+            body: _currentIndex == 0
+                ? const DashboardTab()
+                : _currentIndex == 1
+                ? const MedicationsTab()
+                : const ContactsTab(),
+            bottomNavigationBar: _buildBottomNav(),
+          ),
+          const EmergencyOverlay(),
+        ],
+      ),
     );
   }
 

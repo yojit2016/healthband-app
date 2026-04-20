@@ -47,6 +47,17 @@ class NotificationService {
     );
     await androidPlugin?.createNotificationChannel(channel);
 
+    // Medication channel
+    const AndroidNotificationChannel medChannel = AndroidNotificationChannel(
+      'medication_channel',
+      'Medication Reminders',
+      description: 'Reminders for your daily medications',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    await androidPlugin?.createNotificationChannel(medChannel);
+
     _initialized = true;
   }
 
@@ -84,5 +95,36 @@ class NotificationService {
       'Immediate attention required', // Requested strict body
       details,
     );
+  }
+
+  /// Triggers a demo medication reminder notification after a short delay
+  static Future<void> scheduleMedicationReminder(String medicineName, {int delaySeconds = 5}) async {
+    if (!_initialized) await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      'medication_channel',
+      'Medication Reminders',
+      channelDescription: 'Reminders for your daily medications',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: Color(0xFF00B0FF), // Primary color
+    );
+
+    const iosDetails = DarwinNotificationDetails();
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // simple delay for demo purposes
+    Future.delayed(Duration(seconds: delaySeconds), () async {
+      await _plugin.show(
+        medicineName.hashCode % 100000,
+        'Medication Reminder',
+        'Time to take your $medicineName',
+        details,
+      );
+    });
   }
 }

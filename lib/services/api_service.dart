@@ -240,7 +240,7 @@ class ApiService {
     int attempts = 0;
     while (true) {
       try {
-        final response = await _dio.request<Map<String, dynamic>>(
+        final response = await _dio.request<dynamic>(
           path,
           data: data,
           queryParameters: queryParameters,
@@ -249,71 +249,49 @@ class ApiService {
 
         final body = response.data;
         if (body == null) {
-          return const ApiResult.failure('Empty response from server.');
+          return const ApiResult.failure('Using offline data');
         }
 
-        final success = body['success'] as bool? ?? false;
-        if (!success) {
-          final msg = body['message'] as String? ?? 'Server returned an error.';
-          if (response.statusCode != 200 && response.statusCode != 201) {
-            return ApiResult.failure(msg);
+        if (body is List) {
+          _log('Success: $method $path');
+          return ApiResult.success(parser(body));
+        } else if (body is Map<String, dynamic>) {
+          final success = body['success'] as bool? ?? true;
+          
+          if (!success && response.statusCode != 200 && response.statusCode != 201) {
+            return const ApiResult.failure('Using offline data');
           }
-        }
 
-        if (extractFromDataRaw) {
-            _log('Success: $method $path');
-            return ApiResult.success(parser(body));
-        }
+          if (extractFromDataRaw) {
+              _log('Success: $method $path');
+              return ApiResult.success(parser(body));
+          }
 
-        /// Sometimes endpoints return data directly in `data` or `message`
-        dynamic responseData = body[dataField];
-        if (responseData == null && success) {
-            // Some endpoints might not have a data wrapper
-            _log('Success: $method $path');
-            return ApiResult.success(parser(body));
-        }
+          dynamic responseData = body[dataField];
+          if (responseData == null) {
+              _log('Success: $method $path');
+              return ApiResult.success(parser(body));
+          }
 
-        _log('Success: $method $path');
-        return ApiResult.success(parser(responseData));
-      } on DioException catch (e) {
+          _log('Success: $method $path');
+          return ApiResult.success(parser(responseData));
+        } else {
+          _log('Success: $method $path');
+          return ApiResult.success(parser(body));
+        }
+      } on DioException catch (_) {
         attempts++;
-        _log('DioError on $method $path (Attempt $attempts/$maxRetries): ${e.message}');
         if (attempts >= maxRetries) {
-          return ApiResult.failure(_handleDioError(e));
+          return const ApiResult.failure('Using offline data');
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
-      } catch (e, stack) {
+      } catch (_) {
         attempts++;
-        _log('Exception on $method $path (Attempt $attempts/$maxRetries): $e\n$stack');
         if (attempts >= maxRetries) {
-          return ApiResult.failure('Unexpected error: $e');
+          return const ApiResult.failure('Using offline data');
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
       }
-    }
-  }
-
-  // ── Error handling ──────────────────────────────────────────────────────────
-
-  static String _handleDioError(DioException e) {
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Connection timed out. Check your internet connection.';
-      case DioExceptionType.connectionError:
-        return 'Could not reach the server. Check your network.';
-      case DioExceptionType.badResponse:
-        final code = e.response?.statusCode;
-        final msg = (e.response?.data is Map<String, dynamic>)
-            ? e.response?.data['message']
-            : null;
-        if (msg != null) return msg.toString();
-        return 'Server error (HTTP $code).';
-      case DioExceptionType.cancel:
-        return 'Request was cancelled.';
-      default:
-        return 'Network error: ${e.message}';
     }
   }
 

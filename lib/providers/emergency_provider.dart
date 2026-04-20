@@ -8,6 +8,7 @@ import '../storage/index.dart';
 import 'health_data_provider.dart'; // To reuse apiServiceProvider
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const _kPollInterval = Duration(seconds: 5);
@@ -127,10 +128,18 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
     HiveService.saveAlert(event);
     HiveService.saveEmergencyActive(true);
 
-    // Ensure Notification is exclusively triggered from Service/Provider natively (UI relies on State)
     NotificationService.showEmergencyAlert(event);
 
     debugPrint('[EmergencyProvider] State changed -> isTriggered set to TRUE!');
+    
+    if (HiveService.getAudioEnabled()) {
+       debugPrint('[EmergencyProvider] Audio enabled -> playing alarm sound!');
+       FlutterRingtonePlayer().playAlarm(
+         looping: true,
+         volume: 1.0,
+         asAlarm: true,
+       );
+    }
 
     // 2. Update state to trigger UI
     state = state.copyWith(
@@ -143,7 +152,9 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
 
   /// Called by the UI (e.g. a dialog button) to clear the trigger state.
   void dismissAlarm() {
+    debugPrint('[EmergencyProvider] Alarm dismissed!');
     HiveService.saveEmergencyActive(false);
+    FlutterRingtonePlayer().stop();
     state = state.copyWith(isTriggered: false);
   }
 
