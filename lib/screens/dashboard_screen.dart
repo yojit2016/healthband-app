@@ -225,12 +225,14 @@ class DashboardTab extends ConsumerWidget {
 
           // Subtle offline indicator
           if (state.errorMessage != null && !state.isLive) ...[
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                'Device offline',
+                state.isServerError && !state.isOffline
+                    ? 'Unable to connect to server'
+                    : 'Device offline',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,
                   fontStyle: FontStyle.italic,

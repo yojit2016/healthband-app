@@ -6,20 +6,36 @@ import '../models/index.dart';
 
 /// Wraps an API response: either [data] on success or [error] on failure.
 class ApiResult<T> {
-  const ApiResult._({this.data, this.error});
+  const ApiResult._({
+    this.data,
+    this.error,
+    this.isOffline = false,
+    this.isServerError = false,
+  });
 
   const ApiResult.success(T data) : this._(data: data);
-  const ApiResult.failure(String error) : this._(error: error);
+  const ApiResult.failure(
+    String error, {
+    bool isOffline = false,
+    bool isServerError = false,
+  }) : this._(
+          error: error,
+          isOffline: isOffline,
+          isServerError: isServerError,
+        );
 
   final T? data;
   final String? error;
+  final bool isOffline;
+  final bool isServerError;
 
   bool get isSuccess => data != null;
   bool get isError => error != null;
 
   @override
-  String toString() =>
-      isSuccess ? 'ApiResult.success($data)' : 'ApiResult.failure($error)';
+  String toString() => isSuccess
+      ? 'ApiResult.success($data)'
+      : 'ApiResult.failure($error, offline: $isOffline, serverErr: $isServerError)';
 }
 
 // ── API Service ───────────────────────────────────────────────────────────────
@@ -249,7 +265,7 @@ class ApiService {
 
         final body = response.data;
         if (body == null) {
-          return const ApiResult.failure('Using offline data');
+          return const ApiResult.failure('Server Error', isServerError: true);
         }
 
         if (body is List) {
@@ -259,7 +275,7 @@ class ApiService {
           final success = body['success'] as bool? ?? true;
           
           if (!success && response.statusCode != 200 && response.statusCode != 201) {
-            return const ApiResult.failure('Using offline data');
+            return const ApiResult.failure('Server Error', isServerError: true);
           }
 
           if (extractFromDataRaw) {
@@ -279,16 +295,23 @@ class ApiService {
           _log('Success: $method $path');
           return ApiResult.success(parser(body));
         }
-      } on DioException catch (_) {
+      } on DioException catch (e) {
         attempts++;
         if (attempts >= maxRetries) {
-          return const ApiResult.failure('Using offline data');
+          final isOffline = e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.unknown ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.error.toString().contains('SocketException');
+          return ApiResult.failure('Failed',
+              isOffline: isOffline, isServerError: !isOffline);
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
-      } catch (_) {
+      } catch (e) {
         attempts++;
         if (attempts >= maxRetries) {
-          return const ApiResult.failure('Using offline data');
+          final isOffline = e.toString().contains('SocketException');
+          return ApiResult.failure('Failed',
+              isOffline: isOffline, isServerError: !isOffline);
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
       }

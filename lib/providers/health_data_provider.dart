@@ -32,6 +32,8 @@ class DashboardState {
     required this.isLoading,
     this.errorMessage,
     this.lastUpdated,
+    this.isOffline = false,
+    this.isServerError = false,
   });
 
   /// Most recent reading (always non-null after first fetch)
@@ -51,6 +53,8 @@ class DashboardState {
 
   /// Non-null when the last fetch failed; cleared on next success
   final String? errorMessage;
+  final bool isOffline;
+  final bool isServerError;
 
   // ── Derived helpers ───────────────────────────────────────────────────────
 
@@ -72,6 +76,8 @@ class DashboardState {
     String? errorMessage,
     DateTime? lastUpdated,
     bool clearError = false,
+    bool? isOffline,
+    bool? isServerError,
   }) {
     return DashboardState(
       latest: latest ?? this.latest,
@@ -80,6 +86,8 @@ class DashboardState {
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      isOffline: clearError ? false : (isOffline ?? this.isOffline),
+      isServerError: clearError ? false : (isServerError ?? this.isServerError),
     );
   }
 }
@@ -125,13 +133,17 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       } else {
         // API returned success=false or empty list → fall back to mock
         final mock = _generateMockData();
-        _appendReading(mock, isLive: false, error: result.error);
+        _appendReading(mock,
+            isLive: false,
+            error: result.error,
+            isOffline: (result as ApiResult).isOffline,
+            isServerError: (result as ApiResult).isServerError);
       }
     } catch (_) {
       // Unexpected error — generate mock so UI never freezes
       if (!mounted) return;
       final mock = _generateMockData();
-      _appendReading(mock, isLive: false, error: 'Unexpected fetch error.');
+      _appendReading(mock, isLive: false, error: 'Unexpected fetch error.', isServerError: true);
     } finally {
       _inflight = false;
     }
@@ -143,6 +155,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     HealthData reading, {
     required bool isLive,
     String? error,
+    bool isOffline = false,
+    bool isServerError = false,
   }) {
     final newHistory = [...state.history, reading];
     // Keep only the last N entries to avoid unbounded memory growth
@@ -158,6 +172,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       errorMessage: error,
       lastUpdated: DateTime.now(),
       clearError: error == null,
+      isOffline: isOffline,
+      isServerError: isServerError,
     );
   }
 
