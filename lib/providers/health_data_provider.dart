@@ -29,6 +29,7 @@ class DashboardState {
     required this.latest,
     required this.history,
     required this.isLive,
+    required this.isMockData,
     required this.isLoading,
     this.errorMessage,
     this.lastUpdated,
@@ -36,22 +37,25 @@ class DashboardState {
     this.isServerError = false,
   });
 
-  /// Most recent reading (always non-null after first fetch)
+  /// Most recent reading
   final HealthData? latest;
 
   /// Timestamp of when the latest reading was fetched.
   final DateTime? lastUpdated;
 
-  /// Ring buffer of the last [_kHistoryLen] readings for sparklines
+  /// Ring buffer of the last N readings for sparklines
   final List<HealthData> history;
 
   /// true = last successful fetch came from the real API
   final bool isLive;
 
+  /// Explict mock data flag
+  final bool isMockData;
+
   /// true while the very first fetch is in-flight
   final bool isLoading;
 
-  /// Non-null when the last fetch failed; cleared on next success
+  /// Non-null when the last fetch failed
   final String? errorMessage;
   final bool isOffline;
   final bool isServerError;
@@ -65,31 +69,6 @@ class DashboardState {
       history.map((d) => d.heartRate.toDouble()).toList();
   List<double> get spo2History =>
       history.map((d) => d.spo2.toDouble()).toList();
-
-  // ── copyWith ──────────────────────────────────────────────────────────────
-
-  DashboardState copyWith({
-    HealthData? latest,
-    List<HealthData>? history,
-    bool? isLive,
-    bool? isLoading,
-    String? errorMessage,
-    DateTime? lastUpdated,
-    bool clearError = false,
-    bool? isOffline,
-    bool? isServerError,
-  }) {
-    return DashboardState(
-      latest: latest ?? this.latest,
-      history: history ?? this.history,
-      isLive: isLive ?? this.isLive,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      lastUpdated: lastUpdated ?? this.lastUpdated,
-      isOffline: clearError ? false : (isOffline ?? this.isOffline),
-      isServerError: clearError ? false : (isServerError ?? this.isServerError),
-    );
-  }
 }
 
 // ── Notifier ─────────────────────────────────────────────────────────────────
@@ -103,6 +82,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           latest: null,
           history: [],
           isLive: false,
+          isMockData: false,
           isLoading: true,
         ),
       ) {
@@ -114,36 +94,53 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   final ApiService _api;
   Timer? _timer;
 
+  void _logTemp(String message) {
+    // ignore: avoid_print
+    print('[DEBUG LOG] DashboardNotifier: $message');
+  }
+
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
   Future<void> _fetchOnce() async {
-    // Guard: don't stack concurrent requests if the previous is still
-    // in-flight (slow network). Cancel the current cycle instead.
     if (_inflight) return;
     _inflight = true;
 
     try {
       final result = await _api.getLatestHealthData();
 
-      if (!mounted) return; // widget tree may have been disposed
+      if (!mounted) return;
 
       if (result.isSuccess && result.data != null) {
         final newest = result.data!;
-        _appendReading(newest, isLive: true);
+        _logTemp('API Success: Received real data. Resetting all error states.');
+        _appendReading(
+          newest,
+          isMockData: false,
+          isOffline: false,
+          isServerError: false,
+        );
       } else {
-        // API returned success=false or empty list → fall back to mock
+        _logTemp('API Failed: Falling back to mock data. Offline: ${result.isOffline}, ServerErr: ${result.isServerError}');
         final mock = _generateMockData();
-        _appendReading(mock,
-            isLive: false,
-            error: result.error,
-            isOffline: (result as ApiResult).isOffline,
-            isServerError: (result as ApiResult).isServerError);
+        _appendReading(
+          mock,
+          isMockData: true,
+          error: result.error,
+          isOffline: result.isOffline,
+          isServerError: result.isServerError,
+        );
       }
-    } catch (_) {
-      // Unexpected error — generate mock so UI never freezes
+    } catch (e) {
       if (!mounted) return;
+      _logTemp('API Exception ($e): Falling back to mock data.');
       final mock = _generateMockData();
-      _appendReading(mock, isLive: false, error: 'Unexpected fetch error.', isServerError: true);
+      _appendReading(
+        mock,
+        isMockData: true,
+        error: 'Unexpected fetch error.',
+        isServerError: true,
+        isOffline: false,
+      );
     } finally {
       _inflight = false;
     }
@@ -153,25 +150,27 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   void _appendReading(
     HealthData reading, {
-    required bool isLive,
+    required bool isMockData,
     String? error,
     bool isOffline = false,
     bool isServerError = false,
   }) {
     final newHistory = [...state.history, reading];
-    // Keep only the last N entries to avoid unbounded memory growth
     final trimmed = newHistory.length > _kHistoryLen
         ? newHistory.sublist(newHistory.length - _kHistoryLen)
         : newHistory;
 
-    state = state.copyWith(
+    _logTemp('Applying NEW State -> isMockData: $isMockData, isOffline: $isOffline, isServerError: $isServerError');
+
+    // DO NOT use copyWith. REplace state completely per instructions.
+    state = DashboardState(
       latest: reading,
       history: trimmed,
-      isLive: isLive,
+      isLive: !isMockData,
+      isMockData: isMockData,
       isLoading: false,
       errorMessage: error,
       lastUpdated: DateTime.now(),
-      clearError: error == null,
       isOffline: isOffline,
       isServerError: isServerError,
     );

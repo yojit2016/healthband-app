@@ -157,6 +157,21 @@ class DashboardTab extends ConsumerWidget {
       return const Center(child: Text('No data available'));
     }
 
+    bool showOffline = state.isOffline;
+    bool showServerError = state.isServerError;
+    bool showMockData = state.isMockData;
+
+    // 6. ADD FINAL SAFETY CHECK
+    // If real data exists (isLive == true) and was recently updated, force hide all errors.
+    if (data != null && state.lastUpdated != null) {
+      final isRecent = DateTime.now().difference(state.lastUpdated!).inSeconds < 15;
+      if (isRecent && state.isLive) {
+        showOffline = false;
+        showServerError = false;
+        showMockData = false;
+      }
+    }
+
     return RefreshIndicator(
       onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
       color: AppColors.primary,
@@ -224,22 +239,46 @@ class DashboardTab extends ConsumerWidget {
           const SizedBox(height: 12),
 
           // Subtle offline indicator
-          if (state.errorMessage != null && !state.isLive) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+          if (showOffline)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
               child: Text(
-                state.isServerError && !state.isOffline
-                    ? 'Unable to connect to server'
-                    : 'Device offline',
+                'Device offline',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: AppColors.textDisabled,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          else if (showServerError)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Unable to connect to server',
+                textAlign: TextAlign.center,
+                style: TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,
                   fontStyle: FontStyle.italic,
                 ),
               ),
             ),
-          ],
+            
+          if (showMockData)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Mock Data',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textDisabled,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
 
           // Grid of metrics natively replaced by Row
           SizedBox(

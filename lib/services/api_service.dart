@@ -77,7 +77,17 @@ class ApiService {
     return _requestWithRetry<HealthData>(
       method: 'GET',
       path: '/health-data',
-      parser: (data) => HealthData.fromJson(data as Map<String, dynamic>),
+      // The endpoint returns { success: true, data: [ ...array of readings... ] }
+      // We want the most recent reading, which is the first element.
+      parser: (data) {
+        if (data is List && data.isNotEmpty) {
+          return HealthData.fromJson(data.first as Map<String, dynamic>);
+        }
+        if (data is Map<String, dynamic>) {
+          return HealthData.fromJson(data);
+        }
+        throw FormatException('Unexpected health-data shape: ${data.runtimeType}');
+      },
     );
   }
 
@@ -263,6 +273,10 @@ class ApiService {
           options: Options(method: method),
         );
 
+        if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+          _log('API Success (200 OK) -> statusCode: ${response.statusCode}, isOffline: false, isServerError: false, isMockData: false');
+        }
+
         final body = response.data;
         if (body == null) {
           return const ApiResult.failure('Server Error', isServerError: true);
@@ -295,23 +309,32 @@ class ApiService {
           _log('Success: $method $path');
           return ApiResult.success(parser(body));
         }
-      } on DioException catch (e) {
-        attempts++;
-        if (attempts >= maxRetries) {
-          final isOffline = e.type == DioExceptionType.connectionError ||
-              e.type == DioExceptionType.unknown ||
-              e.type == DioExceptionType.connectionTimeout ||
-              e.error.toString().contains('SocketException');
-          return ApiResult.failure('Failed',
-              isOffline: isOffline, isServerError: !isOffline);
-        }
-        await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
       } catch (e) {
         attempts++;
         if (attempts >= maxRetries) {
-          final isOffline = e.toString().contains('SocketException');
+          bool isOffline = false;
+          bool isServerError = false;
+
+          if (e.toString().contains('SocketException')) {
+            isOffline = true;
+            isServerError = false;
+          } else if (e is DioException) {
+            if (e.response != null) {
+              isServerError = true;
+              isOffline = false;
+            } else {
+              isOffline = true;
+              isServerError = false;
+            }
+          } else {
+            isServerError = true;
+            isOffline = false;
+          }
+
+          _log('API Failed -> statusCode: ${e is DioException ? e.response?.statusCode : null}, isOffline: $isOffline, isServerError: $isServerError, isMockData: true');
+
           return ApiResult.failure('Failed',
-              isOffline: isOffline, isServerError: !isOffline);
+              isOffline: isOffline, isServerError: isServerError);
         }
         await Future<void>.delayed(Duration(milliseconds: 800 * attempts));
       }
