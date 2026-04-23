@@ -164,39 +164,45 @@ class MetricCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.0, 0.4),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, 0.4),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
                   ),
+                  child: child,
                 ),
-                child: child,
+              );
+            },
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.bottomLeft,
+              child: Text(
+                value,
+                key: ValueKey<String>(value),
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                  shadows: [
+                    Shadow(
+                      color: accentColor.withAlpha(80),
+                      blurRadius: 16,
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
-          child: Text(
-            value,
-            key: ValueKey<String>(value),
-            style: TextStyle(
-              color: accentColor,
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              height: 1,
-              shadows: [
-                Shadow(
-                  color: accentColor.withAlpha(80),
-                  blurRadius: 16,
-                ),
-              ],
             ),
           ),
         ),

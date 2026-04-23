@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app_theme.dart';
 import '../widgets/emergency_overlay.dart';
+import '../providers/index.dart';
 import 'dashboard_screen.dart';
 import 'medications_tab.dart';
 import 'contacts_tab.dart';

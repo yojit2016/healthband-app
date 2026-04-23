@@ -17,12 +17,11 @@ class HiveService {
   static const String _kAudioEnabled = 'audioEnabled';
   static const String _kHistoryKey   = 'history';
   static const String _kEmergencyActive = 'isEmergencyActive';
+  static const String _kMedicationsKey   = 'medications';
 
   /// Initializes Hive and opens required boxes. Must be called before runApp.
   static Future<void> init() async {
     await Hive.initFlutter();
-    
-    // Register type adapters here if needed in the future
     
     await Hive.openBox(_settingsBox);
     await Hive.openBox(_healthBox);
@@ -112,6 +111,37 @@ class HiveService {
       return rawList.map((e) {
         final decoded = jsonDecode(e.toString()) as Map<String, dynamic>;
         return EmergencyEvent.fromJson(decoded);
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ── Medication Storage ───────────────────────────────────────────────────
+
+  /// Persists the list of medication schedules to local storage.
+  static Future<void> saveMedications(List<dynamic> medications) async {
+    // We store as raw JSON strings to keep it simple and avoid adapter issues
+    final List<String> rawJsonList = medications.map((e) {
+      if (e is Map<String, dynamic>) return jsonEncode(e);
+      // If it's a model object, call toJson()
+      try {
+        return jsonEncode((e as dynamic).toJson());
+      } catch (_) {
+        return e.toString();
+      }
+    }).toList();
+    await _settings.put(_kMedicationsKey, rawJsonList);
+  }
+
+  /// Synchronously reads the last saved medications from local storage.
+  static List<Map<String, dynamic>> getMedications() {
+    final rawList = _settings.get(_kMedicationsKey) as List<dynamic>?;
+    if (rawList == null) return [];
+
+    try {
+      return rawList.map((e) {
+        return jsonDecode(e.toString()) as Map<String, dynamic>;
       }).toList();
     } catch (_) {
       return [];

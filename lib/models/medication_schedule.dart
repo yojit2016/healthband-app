@@ -29,8 +29,8 @@ class MedicationSchedule {
 
   factory MedicationSchedule.fromJson(Map<String, dynamic> json) {
     return MedicationSchedule(
-      id: json['_id'] as String? ?? '',
-      medicineName: json['medicineName'] as String? ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      medicineName: (json['medicineName'] ?? json['name'] ?? 'Medication').toString(),
       amount: json['amount'] as num? ?? 0,
       unit: json['unit'] as String? ?? '',
       form: json['form'] as String? ?? '',
